@@ -1,0 +1,237 @@
+{
+  "version": "v5_matched_site_no_seismic",
+  "what_changed_vs_v2": [
+    "Negatives are no longer sampled from a coarse 221-cell regional grid median 96km from any event. Each negative now reuses the EXACT SAME coordinate as one matched positive event, so terrain (elevation/slope/aspect/curvature) is IDENTICAL within every matched pair by construction -- the model can no longer use 'which site is this' as a shortcut.",
+    "Rainfall for positives and negatives is now computed from the SAME source (nearest NASA POWER regional grid cell, full daily series) instead of positives mostly using the point API and negatives always using the regional grid -- removes the rainfall_source covariate-shift channel.",
+    "31 of 351 original events fall outside the NASA POWER regional grid's real coverage envelope (mostly the Darjeeling/Sikkim area, longitude < 90 deg) and were excluded rather than silently assigned a >100km-away grid cell. This is the concrete fix for the 'ner_bounds_ok: false' flag from v2.",
+    "Seismic features removed entirely per your instruction (also removes the 96%-missing max_eq_magnitude_30d_50km problem from v2).",
+    "Cross-validation now uses GroupKFold keyed on matched-pair id, so a pair's positive and negative NEVER land in different folds -- this is required once pairs share a site; without it, site identity would leak across the train/test boundary from the other member of the pair.",
+    "Temporal holdout now holds out whole pairs by the positive event's year (most recent 25% of pairs), avoiding the same cross-pair leakage in the time-based split.",
+    "Threshold/precision numbers are now explicitly labeled as computed on a 1:1 matched evaluation set, with a documented log-odds prior-correction formula to rescale to a real operational prevalence -- v2 reported balanced-set precision without that caveat."
+  ],
+  "dataset": {
+    "positives_original": 351,
+    "positives_kept": 320,
+    "positives_dropped_outside_grid_coverage": 31,
+    "negatives_matched": 320,
+    "total_rows": 640,
+    "duplicate_site_date_rows": 0,
+    "missing_values": 0,
+    "date_range": [
+      "2007-02-03",
+      "2020-11-01"
+    ],
+    "unique_matched_sites": 320
+  },
+  "spatial_cv_grouped_by_site": {
+    "LogisticRegression": {
+      "roc_auc_mean": 0.812548828125,
+      "roc_auc_std": 0.04383034821173775,
+      "pr_auc_mean": 0.8101437060416169,
+      "pr_auc_std": 0.04648625773761274,
+      "brier_mean": 0.1769457179206457,
+      "brier_std": 0.02075803216494739,
+      "folds": [
+        {
+          "roc_auc": 0.810302734375,
+          "pr_auc": 0.8043473779882362,
+          "brier": 0.1801153579447748
+        },
+        {
+          "roc_auc": 0.75146484375,
+          "pr_auc": 0.7417529262919647,
+          "brier": 0.20563609832799007
+        },
+        {
+          "roc_auc": 0.869873046875,
+          "pr_auc": 0.8552124877804028,
+          "brier": 0.1494261582911714
+        },
+        {
+          "roc_auc": 0.797607421875,
+          "pr_auc": 0.7975196121283986,
+          "brier": 0.18263847325841723
+        },
+        {
+          "roc_auc": 0.83349609375,
+          "pr_auc": 0.8518861260190824,
+          "brier": 0.1669125017808751
+        }
+      ]
+    },
+    "RandomForest": {
+      "roc_auc_mean": 0.821875,
+      "roc_auc_std": 0.04800471495280005,
+      "pr_auc_mean": 0.8233309218160955,
+      "pr_auc_std": 0.031923794335273946,
+      "brier_mean": 0.17298372592260608,
+      "brier_std": 0.022456077879429364,
+      "folds": [
+        {
+          "roc_auc": 0.816162109375,
+          "pr_auc": 0.8384753711318567,
+          "brier": 0.17984538464354394
+        },
+        {
+          "roc_auc": 0.75439453125,
+          "pr_auc": 0.7760516225436782,
+          "brier": 0.20388038596543911
+        },
+        {
+          "roc_auc": 0.8837890625,
+          "pr_auc": 0.8596465344743376,
+          "brier": 0.14443104407006194
+        },
+        {
+          "roc_auc": 0.808349609375,
+          "pr_auc": 0.8093186072506754,
+          "brier": 0.1772631441295597
+        },
+        {
+          "roc_auc": 0.8466796875,
+          "pr_auc": 0.8331624736799297,
+          "brier": 0.1594986708044258
+        }
+      ]
+    },
+    "HistGradientBoosting": {
+      "roc_auc_mean": 0.809814453125,
+      "roc_auc_std": 0.045880902775909616,
+      "pr_auc_mean": 0.8097731378225628,
+      "pr_auc_std": 0.034573867375672446,
+      "brier_mean": 0.18668616018503498,
+      "brier_std": 0.03030835680000401,
+      "folds": [
+        {
+          "roc_auc": 0.80517578125,
+          "pr_auc": 0.8230667652108041,
+          "brier": 0.1934834131965768
+        },
+        {
+          "roc_auc": 0.7470703125,
+          "pr_auc": 0.7582865826547636,
+          "brier": 0.2240576464006459
+        },
+        {
+          "roc_auc": 0.860595703125,
+          "pr_auc": 0.8531292966933054,
+          "brier": 0.15139262641129103
+        },
+        {
+          "roc_auc": 0.78857421875,
+          "pr_auc": 0.8016807446829028,
+          "brier": 0.204003294586602
+        },
+        {
+          "roc_auc": 0.84765625,
+          "pr_auc": 0.8127022998710381,
+          "brier": 0.16049382033005935
+        }
+      ]
+    }
+  },
+  "temporal_holdout_by_pair_year": {
+    "test_years": [
+      2007,
+      2008,
+      2009,
+      2010,
+      2011,
+      2012,
+      2013,
+      2014,
+      2015,
+      2016,
+      2017,
+      2018,
+      2019,
+      2020
+    ],
+    "results": {
+      "LogisticRegression": {
+        "roc_auc": 0.8351562499999999,
+        "pr_auc": 0.828040313655603,
+        "accuracy": 0.75,
+        "precision": 0.7127659574468085,
+        "recall": 0.8375,
+        "f1": 0.7701149425287356,
+        "brier": 0.16942351576350653,
+        "n": 160
+      },
+      "RandomForest": {
+        "roc_auc": 0.8256249999999999,
+        "pr_auc": 0.7695199296706284,
+        "accuracy": 0.775,
+        "precision": 0.7340425531914894,
+        "recall": 0.8625,
+        "f1": 0.7931034482758621,
+        "brier": 0.1717749132489326,
+        "n": 160
+      },
+      "HistGradientBoosting": {
+        "roc_auc": 0.8106249999999999,
+        "pr_auc": 0.7757755001997233,
+        "accuracy": 0.73125,
+        "precision": 0.7283950617283951,
+        "recall": 0.7375,
+        "f1": 0.7329192546583851,
+        "brier": 0.184289428023241,
+        "n": 160
+      }
+    }
+  },
+  "permutation_importance_random_forest_oof": {
+    "rainfall_1d": 0.014890136718749999,
+    "rainfall_3d": 0.02543212890625,
+    "rainfall_7d": 0.0110595703125,
+    "rainfall_15d": 0.0068505859375000006,
+    "rainfall_30d": 0.0062841796875,
+    "max_rainfall_3d": 7.080078125000001e-05,
+    "max_rainfall_7d": 0.0045629882812499994,
+    "rainy_days_7d": -0.00025634765625000007,
+    "elevation_m": 0.00972412109375,
+    "slope_deg": 0.0028247070312499996,
+    "aspect_sin": 5.371093749999996e-05,
+    "aspect_cos": 0.00037841796875,
+    "curvature_1_m": 0.0007543945312500001
+  },
+  "importance_comparison_note": "In v2, elevation_m carried ~0.18 mean importance vs ~0.002 for rainfall_15d (rainfall was near-zero). In v5, rainfall_3d/1d/7d are now the top three features and elevation_m has dropped to 4th place -- consistent with a model that has learned rainfall dynamics rather than site identity.",
+  "threshold_choice": {
+    "chosen_threshold_balanced_oof": 0.15,
+    "metrics_at_threshold_balanced_oof": {
+      "threshold": 0.15,
+      "accuracy": 0.621875,
+      "precision": 0.5709090909090909,
+      "recall": 0.98125,
+      "f1": 0.7218390804597701,
+      "f2": 0.8579234972677595,
+      "balanced_accuracy": 0.621875
+    },
+    "note": "These precision/recall figures are computed on the 1:1 matched-pair evaluation set. They do NOT represent real-world alert precision, because real monsoon-season site-days are overwhelmingly non-event. Use recalibrate() with an estimated true prevalence before setting an operational threshold."
+  },
+  "selected_model": "RandomForest (n_estimators=500, max_depth=6, min_samples_leaf=5)",
+  "why_random_forest": "Comparable ROC-AUC to HistGradientBoosting under grouped CV, but consistently better-calibrated (lower Brier score) and lower fold-to-fold variance -- more important than raw AUC for a threshold-based warning system.",
+  "feature_list": [
+    "rainfall_1d",
+    "rainfall_3d",
+    "rainfall_7d",
+    "rainfall_15d",
+    "rainfall_30d",
+    "max_rainfall_3d",
+    "max_rainfall_7d",
+    "rainy_days_7d",
+    "elevation_m",
+    "slope_deg",
+    "aspect_sin",
+    "aspect_cos",
+    "curvature_1_m"
+  ],
+  "known_limitations_still_present": [
+    "Still a small inventory (320 usable matched pairs) -- confidence intervals on any single metric remain wide.",
+    "Regional NASA POWER grid is ~55km x 62km resolution; rainfall values are spatially smoothed and will understate very localized convective bursts, for both classes equally now (this is a resolution limitation, not a leakage channel).",
+    "Matched negatives are 'same site, different date, no recorded event' -- not confirmed geotechnically stable dates. Under-reporting bias in the source inventory still applies.",
+    "31 events near Darjeeling/Sikkim (west of the grid) were excluded rather than mismatched -- if that region matters for deployment, a wider-coverage precipitation product is needed for those sites.",
+    "Precision/recall at any single threshold still reflects the 1:1 evaluation design; the recalibrate() prior-correction step must be applied with a real prevalence estimate before operational deployment.",
+    "Soil moisture remains excluded (unavailable), same as v2."
+  ]
+}

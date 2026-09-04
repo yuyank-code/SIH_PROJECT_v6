@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="2" skipped="0" tests="14" time="13.411" timestamp="2026-08-29T09:24:46.641567+00:00" hostname="agent-env-304c2102-d3bc-4134-ace5-50fb5e69a104"><testcase classname="tests.test_api_regression.TestPredictions" name="test_predict_critical" time="0.205"><failure message="AssertionError: {&quot;detail&quot;:[{&quot;type&quot;:&quot;missing&quot;,&quot;loc&quot;:[&quot;body&quot;,&quot;features&quot;],&quot;msg&quot;:&quot;Field required&quot;,&quot;input&quot;:{&quot;rainfall_1d&quot;:200,&quot;rainfall_3d&quot;:400,&quot;rainfall_7d&quot;:600,&quot;rainfall_15d&quot;:900,&quot;rainfall_30d&quot;:1500,&quot;max_rainfall_3d&quot;:150,&quot;max_rainfall_7d&quot;:300,&quot;rainy_days_7d&quot;:7,&quot;elevation_m&quot;:900,&quot;slope_deg&quot;:35,&quot;aspect_sin&quot;:0.9,&quot;aspect_cos&quot;:0.1,&quot;curvature_1_m&quot;:0.005},&quot;url&quot;:&quot;https://errors.pydantic.dev/2.13/v/missing&quot;}]}&#10;assert 422 == 200&#10; +  where 422 = &lt;Response [422]&gt;.status_code">self = &lt;test_api_regression.TestPredictions object at 0xf904fbf32750&gt;
+s = &lt;requests.sessions.Session object at 0xf9050092f190&gt;
+
+    def test_predict_critical(self, s):
+        r = s.post(f"{BASE_URL}/api/predictions/predict", json=self.HIGH, timeout=30)
+&gt;       assert r.status_code == 200, r.text
+E       AssertionError: {"detail":[{"type":"missing","loc":["body","features"],"msg":"Field required","input":{"rainfall_1d":200,"rainfall_3d":400,"rainfall_7d":600,"rainfall_15d":900,"rainfall_30d":1500,"max_rainfall_3d":150,"max_rainfall_7d":300,"rainy_days_7d":7,"elevation_m":900,"slope_deg":35,"aspect_sin":0.9,"aspect_cos":0.1,"curvature_1_m":0.005},"url":"https://errors.pydantic.dev/2.13/v/missing"}]}
+E       assert 422 == 200
+E        +  where 422 = &lt;Response [422]&gt;.status_code
+
+backend/tests/test_api_regression.py:55: AssertionError</failure></testcase><testcase classname="tests.test_api_regression.TestHealth" name="test_health" time="0.158" /><testcase classname="tests.test_api_regression.TestHealth" name="test_model_info" time="0.095" /><testcase classname="tests.test_api_regression.TestPredictions" name="test_predict_missing_feature" time="0.043" /><testcase classname="tests.test_api_regression.TestZones" name="test_zones_list" time="0.054" /><testcase classname="tests.test_api_regression.TestGIS" name="test_risk_zones_geojson" time="0.042" /><testcase classname="tests.test_api_regression.TestZones" name="test_zone_detail" time="0.061" /><testcase classname="tests.test_api_regression.TestGIS" name="test_heatmap" time="0.047" /><testcase classname="tests.test_api_regression.TestDashboard" name="test_summary" time="0.045" /><testcase classname="tests.test_api_regression.TestRunAll" name="test_run_all" time="12.504" /><testcase classname="tests.test_api_regression.TestZonePredictionOverride" name="test_override_upgrades_severity" time="0.118" /><testcase classname="tests.test_api_regression.TestAlerts" name="test_alert_translations" time="0.041"><failure message="AssertionError: {&quot;detail&quot;:[{&quot;type&quot;:&quot;missing&quot;,&quot;loc&quot;:[&quot;body&quot;,&quot;reason&quot;],&quot;msg&quot;:&quot;Field required&quot;,&quot;input&quot;:{&quot;zone_id&quot;:&quot;NER-001&quot;,&quot;severity&quot;:&quot;HIGH&quot;,&quot;message&quot;:&quot;TEST_ heavy rainfall predicted; landslide risk elevated.&quot;},&quot;url&quot;:&quot;https://errors.pydantic.dev/2.13/v/missing&quot;}]}&#10;assert 422 in (200, 201)&#10; +  where 422 = &lt;Response [422]&gt;.status_code">self = &lt;test_api_regression.TestAlerts object at 0xf904fbf453d0&gt;
+s = &lt;requests.sessions.Session object at 0xf9050092f190&gt;
+
+    def test_alert_translations(self, s):
+        payload = {
+            "zone_id": "NER-001",
+            "severity": "HIGH",
+            "message": "TEST_ heavy rainfall predicted; landslide risk elevated.",
+        }
+        r = s.post(f"{BASE_URL}/api/alerts", json=payload, timeout=60)
+&gt;       assert r.status_code in (200, 201), r.text
+E       AssertionError: {"detail":[{"type":"missing","loc":["body","reason"],"msg":"Field required","input":{"zone_id":"NER-001","severity":"HIGH","message":"TEST_ heavy rainfall predicted; landslide risk elevated."},"url":"https://errors.pydantic.dev/2.13/v/missing"}]}
+E       assert 422 in (200, 201)
+E        +  where 422 = &lt;Response [422]&gt;.status_code
+
+backend/tests/test_api_regression.py:168: AssertionError</failure></testcase><testcase classname="tests.test_api_regression.TestReports" name="test_road_blockage_marks_road" time="0.113" /><testcase classname="tests.test_api_regression.TestResponse" name="test_priorities_ordered" time="0.065" /></testsuite></testsuites>

@@ -1,0 +1,114 @@
+{
+  "theme_strategy": "Hybrid Context: The platform must switch seamlessly between a 'Mission Control' (Dark Mode optimized for 24/7 authority dashboards with low eye strain) and a 'Field Operations' (High-Contrast Light Mode optimized for outdoor daylight visibility on mobile). It must feel serious, data-driven, and utilitarian—mimicking true military or government tactical systems.",
+  "typography": {
+    "families": {
+      "headings": "Cabinet Grotesk",
+      "body": "IBM Plex Sans",
+      "data_and_mono": "JetBrains Mono"
+    },
+    "rules": {
+      "anti_default": "Never use Inter or Roboto. Cabinet Grotesk for section titles provides an authoritative, structured voice. IBM Plex Sans ensures absolute legibility for dense paragraphs.",
+      "metrics": "All data points, coordinates, timestamps, and severity labels MUST use JetBrains Mono (e.g., `font-mono`).",
+      "scale": {
+        "h1": "text-3xl md:text-4xl font-cabinet-grotesk tracking-tighter font-bold",
+        "h2": "text-xl md:text-2xl font-cabinet-grotesk tracking-tight font-semibold",
+        "body": "text-sm md:text-base font-ibm-plex-sans leading-relaxed",
+        "labels": "text-xs font-mono uppercase tracking-[0.1em]"
+      }
+    }
+  },
+  "colors": {
+    "archetype": "Swiss & High-Contrast mixed with The Performance Pro (Tactical).",
+    "palette": {
+      "background": {
+        "dark": "#0A0C10",
+        "light": "#F3F4F6"
+      },
+      "surface": {
+        "dark": "#131820",
+        "light": "#FFFFFF"
+      },
+      "border": {
+        "dark": "#262E3B",
+        "light": "#E5E7EB"
+      },
+      "text": {
+        "primary_dark": "#F9FAFB",
+        "secondary_dark": "#9CA3AF",
+        "primary_light": "#111827",
+        "secondary_light": "#4B5563"
+      },
+      "severity": {
+        "critical": "#E11D48",
+        "high": "#EA580C",
+        "medium": "#D97706",
+        "low": "#059669"
+      }
+    },
+    "contrast_rules": "Avoid gradients. Use solid fills or 10% opacity tints of the severity colors for backgrounds of warning panels. Ensure text over severity colors meets APCA contrast guidelines (use white text on Critical/High, black/dark on Low/Medium if needed)."
+  },
+  "visual_enhancers": {
+    "surfaces": "Grid Borders (The Technical Look). Dashboards should use 1px solid borders to delineate panels, resembling a strict grid or command-center console rather than floating 'SaaS' cards. Shadow is removed in favor of structural borders.",
+    "corners": "Sharp. Use `rounded-none` or absolute maximum `rounded-sm` (2px). No pill-shaped cards in the authority dashboard.",
+    "textures": "Subtle topographical line SVGs at 5% opacity can be used in empty states or login screens to reinforce the GIS/mapping nature of the application."
+  },
+  "layouts": {
+    "authority_dashboard": {
+      "strategy": "Map-First 'Bento' High-Density Grid. The map is the dominant element.",
+      "grid": "grid-cols-12 h-screen overflow-hidden",
+      "map_span": "col-span-12 lg:col-span-8 xl:col-span-9 h-full relative",
+      "sidebar_span": "col-span-12 lg:col-span-4 xl:col-span-3 h-full border-l overflow-y-auto bg-surface",
+      "overlays": "Map overlays (Legend, Time/Date, Quick Filters) must float over the map using absolute positioning with deep blur (`backdrop-blur-md bg-background/80`) and sharp borders."
+    },
+    "mobile_field_citizen": {
+      "strategy": "Mobile-First Utility. Large touch targets (min h-12), high contrast, low-bandwidth design. Forms for GPS/Photo upload must be sequential and clear.",
+      "spacing": "Use comfortable padding (`p-4`, `p-6`) to prevent misclicks outdoors."
+    }
+  },
+  "component_guidelines": {
+    "priority_badges": "Labels like P1 (IMMEDIATE) must be styled structurally. E.g., `border border-red-600 text-red-600 bg-red-600/10 font-mono text-xs px-2 py-1`.",
+    "map_legend": "Permanent overlay component. Must explicitly define the color language (Green/Amber/Orange/Red) with crisp typography.",
+    "buttons": "Tactical/Brutalist. Flat, sharp edges, distinct hover states via color inversion (`hover:bg-primary hover:text-white`).",
+    "forms": "Use customized Shadcn UI forms. Inputs should have 1px borders, solid backgrounds, and clear focus states (`focus:ring-2 focus:ring-slate-500 rounded-none`)."
+  },
+  "motion": {
+    "philosophy": "Utilitarian & Snappy. Avoid bouncy or slow animations.",
+    "transitions": "Use fast fade-ins for panels (`duration-150 ease-out`).",
+    "alerts": "Incoming Critical Alerts can use a subtle pulsing border (`animate-pulse`) on the P1 badge or map marker."
+  },
+  "media": {
+    "icons": "Phosphor Icons (@phosphor-icons/react) for dense, professional dashboards. Use 'duotone' or 'regular' weight for clear legibility.",
+    "map_integration": "react-leaflet. Ensure map tiles match the theme (e.g., CartoDB Dark Matter for dark mode, CartoDB Positron for light mode, or satellite tiles when requested)."
+  },
+  "accessibility": {
+    "data_testid": "MANDATORY. Every button, input, tab, and severity label must have a descriptive kebab-case `data-testid` (e.g., `data-testid='filter-severity-critical'`).",
+    "color_blindness": "Do not rely on color alone. Always pair the severity color with the text label (e.g., '[!] CRITICAL' or an icon)."
+  },
+  "universal_guidelines": [
+    "Prioritize data density and signal-to-noise ratio over negative space in the Authority Dashboard.",
+    "Never use generic AI chatbot or cutesy SaaS illustrations.",
+    "Do not use transition-all. Target explicit properties (transition-colors, transition-opacity).",
+    "Ensure the layout does not break when long region names or multi-line alert texts are injected.",
+    "Use sonner for non-intrusive toast notifications.",
+    "Avoid transparent dropdown backgrounds. Always use solid or heavily blurred backgrounds with clear borders."
+  ],
+  "image_urls": {
+    "hero_login": {
+      "url": "https://images.unsplash.com/photo-1568644559664-e4a5735c37ea?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA2MTJ8MHwxfHNlYXJjaHwyfHxub3J0aGVhc3QlMjBpbmRpYSUyMGxhbmRzY2FwZXxlbnwwfHx8fDE3ODc5OTAzODB8MA&ixlib=rb-4.1.0&q=85",
+      "category": "background",
+      "description": "Dramatic mountain landscape suitable for the background of the login/auth screen (apply heavy dark/blue tint overlay for readability)."
+    },
+    "landslide_report_placeholder": {
+      "url": "https://images.unsplash.com/photo-1779026111951-6dfb4f575876?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1ODh8MHwxfHNlYXJjaHwzfHxsYW5kc2xpZGUlMjBtb3VudGFpbiUyMHJvYWR8ZW58MHx8fHwxNzg3OTkwMzgwfDA&ixlib=rb-4.1.0&q=85",
+      "category": "content",
+      "description": "Mudslide blocking a rural road. Use as a placeholder for a citizen or field officer uploaded report photo."
+    }
+  },
+  "instructions_to_main_agent": [
+    "Install required fonts: Cabinet Grotesk, IBM Plex Sans, and JetBrains Mono.",
+    "Install @phosphor-icons/react for iconography.",
+    "Install react-leaflet and leaflet for the GIS map implementation.",
+    "Implement a role-selection login screen first, which routes to distinct layouts: Authority (dense dashboard), Field Officer (mobile UI), Citizen (public map/report UI).",
+    "Ensure map overlays and sidebars overlap cleanly without visual clipping or transparent collisions."
+  ]
+}

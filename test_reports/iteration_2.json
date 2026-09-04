@@ -1,0 +1,40 @@
+{
+  "summary": "Iteration 2 regression: DEM terrain (Open-Meteo 3x3 Horn's method) + SMS blast (LOG_ONLY) + Recipients CRUD. Backend: 10/10 iter2 tests + 4/4 ML regression tests all pass. Frontend: /recipients page renders provider chip (LOG_ONLY), banner, 3 seeded recipients (Meghalaya/as, Sikkim/ne, Mizoram/lus), add + delete flows work, delivery ledger shows NER-001 alert fan-out only to matching recipients (as + lus, NOT ne) in their preferred languages. nav-recipients link routes correctly. DEM bootstrap successfully flipped all 22 zones to terrain_source='DEM_OPEN_METEO'. NER-009 (Bomdila Slope) shows elevation_m > 1500 and slope_deg > 5 (real DEM). run-all still returns ok=22 failed=0 with new terrain.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "N/A", "issue": "Carry-over from iter1: sklearn 1.8.0→1.9.0 InconsistentVersionWarning on unpickle. Numerical parity still holds (regression asserts <1e-6)."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter2_dem_sms.py",
+    "/app/backend/tests/test_ml_regression.py",
+    "/app/backend/tests/test_api_regression.py",
+    "/app/test_reports/pytest/iter2_dem_sms.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "server.py is now 694 lines — right at the 700-line split threshold. Strongly recommend extracting recipients + notifications + terrain routes into app/api/*.py routers next iteration.",
+    "sms_service.blast_alert district match uses `$or: [{district: zone.district}, {district: null}, {district: ''}]` — correct behaviour for nation-wide subscribers. Verified: Sikkim recipient correctly excluded from NER-001 (East Khasi Hills) alert.",
+    "DEM bootstrap correctly runs as background asyncio task on startup, is idempotent (only picks zones where terrain_source='DEMO'), and gracefully continues on per-zone failures. Zones stuck on DEMO remain testable via POST /api/terrain/recompute.",
+    "Twilio credentials read via os.environ.get() at every call — correct; enabling only requires setting env vars and restarting.",
+    "All Mongo _id fields stripped via _strip helper; recipients POST also pops _id post-insert.",
+    "Frontend Recipients.jsx uses data-testid on every interactive element (nav, form fields, add-btn, per-row del-<id>, notif-<id>). Excellent testability."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iter2_dem_sms.py (new — 10 tests)"
+  ],
+  "success_rate": {"backend": "100% (10/10 iter2 + 4/4 ml regression)", "frontend": "100% (all recipients flows: page load, provider chip, banner, seed data, add, delete, nav link, ledger)"},
+  "test_credentials": "Role-based only (see /app/memory/test_credentials.md). Twilio deliberately unset — LOG_ONLY path verified.",
+  "seed_data_creation": "Test recipients (TEST_QA Officer, TEST_UI Officer) created and cleaned up within each test. A TEST_iter2 alert was fired on NER-001 which persists in db.alerts + db.notifications (log-only, no side-effect on external systems).",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Iter2 backend suite at /app/backend/tests/test_iter2_dem_sms.py — 10 tests. POST /api/alerts requires severity field (schema: zone_id + reason + severity). BASE_URL read via helper _base_url() with /app/frontend/.env fallback. DEM bootstrap can take ~30s on first startup — test uses polling for terrain_source=DEM_OPEN_METEO. When TWILIO_* env vars are added, notifications/status.provider flips to TWILIO and blast_alert switches to real send_sms — retest with credentials in place.",
+  "rca of the issue": "N/A — no bugs found. One test failure during authoring (POST /api/alerts missing 'severity') was a test-side omission, fixed by adding severity='HIGH' to payload."
+}
