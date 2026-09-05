@@ -60,6 +60,10 @@ create table if not exists public.zones (
     curvature_1_m  double precision,
     centroid       geography(Point, 4326),                   -- written as WKT POINT(lon lat)
     boundary       geography(Polygon, 4326),                 -- written as WKT POLYGON((...))
+    -- Response-priority scoring inputs (read/written by risk_service.py).
+    road_blocked         boolean not null default false,
+    isolated_villages    integer not null default 0,
+    recent_field_report  boolean not null default false,
     created_at     timestamptz not null default now(),
     updated_at     timestamptz not null default now()
 );

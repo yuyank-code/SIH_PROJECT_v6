@@ -26,6 +26,18 @@ async def close() -> None:
         try: await _client.auth.sign_out()
         finally: _client = None
 
+def _d(res):
+    """Safely extract `.data` from a maybe_single() result.
+
+    postgrest-py's maybe_single() returns None outright (not a response
+    object with .data=None) when zero rows match -- unlike single()/plain
+    queries, which always return a response object. Accessing `.data`
+    directly on that None crashes with AttributeError on the very common
+    "row doesn't exist yet" case (new zone with no prediction, a report
+    that was deleted, etc). This normalizes both shapes.
+    """
+    return getattr(res, "data", None)
+
 def _zone(row: Dict[str, Any]) -> Dict[str, Any]:
     return {"id": row.get("id"), "zone_id": row.get("zone_id"), "name": row.get("name"), "district": row.get("district"), "state": row.get("state"), "centroid": row.get("centroid") or {}, "geometry": row.get("geometry"), "population": row.get("population"), "terrain": {k: row[k] for k in ("elevation_m", "slope_deg", "aspect_sin", "aspect_cos", "curvature_1_m") if row.get(k) is not None}, "terrain_source": row.get("terrain_source"), "road_blocked": row.get("road_blocked", False), "isolated_villages": row.get("isolated_villages", 0), "recent_field_report": row.get("recent_field_report", False), "created_at": row.get("created_at"), "updated_at": row.get("updated_at")}
 
@@ -43,8 +55,8 @@ async def list_sensors(status: Optional[str] = None) -> List[Dict[str, Any]]:
     c=await client(); res=await c.rpc("list_sensors_geojson",{"p_status":status}).execute(); return [{"sensor_id":x["sensor_id"],"zone_id":x.get("zone_id"),"type":x["sensor_type"],"status":x["status"],"lat":x["lat"],"lon":x["lon"],"metadata":x.get("metadata") or {},"last_seen_iso":x.get("last_seen_at")} for x in (res.data or [])]
 async def insert_sensor_reading(sensor_id: str, measurement_type: str, value: float) -> Dict[str, Any]:
     c=await client(); sensor=await c.table("sensors").select("id").eq("sensor_id",sensor_id).maybe_single().execute()
-    if not sensor.data: raise ValueError("sensor_not_found")
-    now=datetime.now(timezone.utc).isoformat(); res=await c.table("sensor_readings").insert({"sensor_id":sensor.data["id"],"measurement_type":measurement_type,"value":value,"recorded_at":now}).select("*").single().execute(); await c.table("sensors").update({"last_seen_at":now,"updated_at":now}).eq("id",sensor.data["id"]).execute(); return {"id":str(res.data["id"]),"sensor_id":sensor_id,"measurement_type":measurement_type,"value":value,"timestamp":now}
+    if not _d(sensor): raise ValueError("sensor_not_found")
+    now=datetime.now(timezone.utc).isoformat(); res=await c.table("sensor_readings").insert({"sensor_id":_d(sensor)["id"],"measurement_type":measurement_type,"value":value,"recorded_at":now}).select("*").single().execute(); await c.table("sensors").update({"last_seen_at":now,"updated_at":now}).eq("id",sensor.data["id"]).execute(); return {"id":str(res.data["id"]),"sensor_id":sensor_id,"measurement_type":measurement_type,"value":value,"timestamp":now}
 async def list_roads() -> List[Dict[str, Any]]:
     c=await client(); res=await c.rpc("list_roads_geojson").execute(); return [dict(x) for x in (res.data or [])]
 async def update_road_status(road_id: str, status: str) -> None:
@@ -52,7 +64,7 @@ async def update_road_status(road_id: str, status: str) -> None:
 async def list_villages() -> List[Dict[str, Any]]:
     c=await client(); res=await c.rpc("list_villages_geojson").execute(); return [dict(x) for x in (res.data or [])]
 async def find_report_by_client_uuid(client_uuid: str) -> Optional[Dict[str, Any]]:
-    c=await client(); res=await c.table("reports").select("*").eq("client_uuid",client_uuid).maybe_single().execute(); return res.data
+    c=await client(); res=await c.table("reports").select("*").eq("client_uuid",client_uuid).maybe_single().execute(); return _d(res)
 async def insert_report(payload: Dict[str, Any]) -> Dict[str, Any]:
     # nearest_zone_id is persisted (it was previously computed by the caller and
     # then dropped on the floor, leaving the column and its index permanently
@@ -62,7 +74,7 @@ async def insert_report(payload: Dict[str, Any]) -> Dict[str, Any]:
     res=await c.table("reports").insert(row).select("*").single().execute(); return dict(res.data)
 async def can_access_report(report_id: str, user_id: str, role: str) -> bool:
     if role in {"ADMIN","AUTHORITY","FIELD_OFFICER"}: return True
-    c=await client(); res=await c.table("reports").select("id").eq("id",report_id).eq("reporter_id",user_id).maybe_single().execute(); return bool(res.data)
+    c=await client(); res=await c.table("reports").select("id").eq("id",report_id).eq("reporter_id",user_id).maybe_single().execute(); return bool(_d(res))
 async def insert_report_media(report_id: str, media: Dict[str, Any]) -> Dict[str, Any]:
     c=await client(); row={"report_id":report_id,"storage_path":media["storage_path"],"media_type":media.get("media_type","PHOTO"),"mime_type":media.get("mime_type"),"size_bytes":media.get("size_bytes")}; res=await c.table("report_media").insert(row).select("*").single().execute(); return dict(res.data)
 async def list_reports(limit: int = 100, status: Optional[str] = None, report_type: Optional[str] = None) -> List[Dict[str, Any]]:
@@ -103,7 +115,7 @@ async def list_reports_enriched(limit: int = 100, status: Optional[str] = None, 
     return rows
 
 async def get_report(report_id: str) -> Optional[Dict[str, Any]]:
-    c=await client(); res=await c.table("reports").select("*").eq("id",report_id).maybe_single().execute(); return dict(res.data) if res.data else None
+    c=await client(); res=await c.table("reports").select("*").eq("id",report_id).maybe_single().execute(); return dict(_d(res)) if _d(res) else None
 
 async def update_report(report_id: str, changes: Dict[str, Any]) -> Optional[Dict[str, Any]]:
     allowed={"status","verification_note","verified_at","verified_by","incident_id","description"}
@@ -111,7 +123,7 @@ async def update_report(report_id: str, changes: Dict[str, Any]) -> Optional[Dic
     if not patch: return await get_report(report_id)
     patch["updated_at"]=datetime.now(timezone.utc).isoformat()
     c=await client(); res=await c.table("reports").update(patch).eq("id",report_id).select("*").maybe_single().execute()
-    return dict(res.data) if res.data else None
+    return dict(_d(res)) if _d(res) else None
 
 async def list_report_media(report_id: str) -> List[Dict[str, Any]]:
     c=await client(); res=await c.table("report_media").select("*").eq("report_id",report_id).order("created_at",desc=False).execute(); return [dict(x) for x in (res.data or [])]
@@ -143,7 +155,7 @@ async def nearest_shelters(lat: float, lon: float, limit: int = 5) -> List[Dict[
 async def list_shelters() -> List[Dict[str, Any]]:
     c=await client(); res=await c.rpc("list_shelters_geojson").execute(); return [dict(x) for x in (res.data or [])]
 async def get_shelter(shelter_id: str) -> Optional[Dict[str, Any]]:
-    c=await client(); res=await c.table("shelters").select("*").eq("shelter_id",shelter_id).maybe_single().execute(); return dict(res.data) if res.data else None
+    c=await client(); res=await c.table("shelters").select("*").eq("shelter_id",shelter_id).maybe_single().execute(); return dict(_d(res)) if _d(res) else None
 async def upsert_shelter(payload: Dict[str, Any]) -> Dict[str, Any]:
     c=await client(); row={k:v for k,v in payload.items() if k in {"shelter_id","name","category","elevation_m","capacity","current_occupancy","status","contact_phone","managed_by","district","state","source","metadata"} and v is not None}
     if payload.get("lat") is not None and payload.get("lon") is not None:
@@ -157,7 +169,7 @@ async def update_shelter(shelter_id: str, changes: Dict[str, Any]) -> Optional[D
     # An occupancy or status update is itself a human confirming the record.
     patch["verified_at"]=datetime.now(timezone.utc).isoformat()
     c=await client(); res=await c.table("shelters").update(patch).eq("shelter_id",shelter_id).select("*").maybe_single().execute()
-    return dict(res.data) if res.data else None
+    return dict(_d(res)) if _d(res) else None
 async def create_alert(payload: Dict[str, Any]) -> Dict[str, Any]:
     c=await client(); alert=dict((await c.table("alerts").insert(payload).select("*").single().execute()).data)
     devices=await c.table("user_devices").select("user_id,fcm_token").eq("is_active",True).execute()
@@ -195,10 +207,10 @@ async def get_predictions() -> List[Dict[str, Any]]:
     return out
 async def get_latest_prediction(zone_id: str) -> Optional[Dict[str, Any]]:
     c=await client(); zone=await c.table("zones").select("id,zone_id").eq("zone_id",zone_id).maybe_single().execute()
-    if not zone.data:return None
-    res=await c.table("risk_predictions").select("*").eq("zone_id",zone.data["id"]).order("predicted_at",desc=True).limit(1).maybe_single().execute()
-    if not res.data:return None
-    row=dict(res.data); row["zone_id"]=zone_id; return row
+    if not _d(zone):return None
+    res=await c.table("risk_predictions").select("*").eq("zone_id",_d(zone)["id"]).order("predicted_at",desc=True).limit(1).maybe_single().execute()
+    if not _d(res):return None
+    row=dict(_d(res)); row["zone_id"]=zone_id; return row
 async def upsert_prediction(zone_id: str, result: Dict[str, Any], priority: Dict[str, Any]) -> Dict[str, Any]:
     c=await client(); zone=await c.table("zones").select("id").eq("zone_id",zone_id).single().execute(); row={"zone_id":zone.data["id"],"probability":result["probability"],"risk_score":result["risk_score"],"prediction":result["prediction"],"severity":result["severity"],"priority":priority["priority"],"model_version":result["model_version"],"features_used":result.get("features_used") or {},"contributing_factors":result.get("contributing_factors") or [],"source_map":result.get("source_map") or {},"predicted_at":result.get("timestamp") or datetime.now(timezone.utc).isoformat()}; res=await c.table("risk_predictions").upsert(row,on_conflict="zone_id").select("*").single().execute(); out=dict(res.data); out["zone_id"]=zone_id; out["response_priority"]=priority; return out
 async def create_feedback(payload: Dict[str, Any]) -> Dict[str, Any]:
@@ -219,7 +231,7 @@ async def dashboard_counts() -> Dict[str, Any]:
 async def _zone_uuid(zone_id: str) -> Optional[str]:
     """Map an app zone_id ('NER-001') to the internal zones.id UUID."""
     c=await client(); res=await c.table("zones").select("id").eq("zone_id",zone_id).maybe_single().execute()
-    return res.data["id"] if res.data else None
+    return _d(res)["id"] if _d(res) else None
 
 def _task(row: Dict[str, Any]) -> Dict[str, Any]:
     z=row.pop("zones",None) or {}
@@ -263,11 +275,11 @@ async def update_response_task(task_id: str, changes: Dict[str, Any]) -> Optiona
     if patch.get("status")=="RESOLVED": patch["resolved_at"]=datetime.now(timezone.utc).isoformat()
     if not patch: return await get_response_task(task_id)
     res=await c.table("response_tasks").update(patch).eq("id",task_id).select("*,zones(zone_id,name,state,district)").maybe_single().execute()
-    return _task(dict(res.data)) if res.data else None
+    return _task(dict(_d(res))) if _d(res) else None
 
 async def get_response_task(task_id: str) -> Optional[Dict[str, Any]]:
     c=await client(); res=await c.table("response_tasks").select("*,zones(zone_id,name,state,district)").eq("id",task_id).maybe_single().execute()
-    return _task(dict(res.data)) if res.data else None
+    return _task(dict(_d(res))) if _d(res) else None
 
 # ---- Incidents -------------------------------------------------------------
 def _incident(row: Dict[str, Any]) -> Dict[str, Any]:
@@ -299,8 +311,8 @@ async def list_incidents(status: Optional[str] = None, limit: int = 100) -> List
 
 async def get_incident(incident_id: str) -> Optional[Dict[str, Any]]:
     c=await client(); res=await c.table("incidents").select("*,zones(zone_id,name,state,district)").eq("id",incident_id).maybe_single().execute()
-    if not res.data: return None
-    inc=_incident(dict(res.data))
+    if not _d(res): return None
+    inc=_incident(dict(_d(res)))
     inc["impacts"]=await list_impacts(incident_id)
     inc["resources"]=await list_resources(incident_id)
     inc["recovery_tasks"]=await list_response_tasks(incident_id=incident_id)
@@ -311,7 +323,7 @@ async def update_incident(incident_id: str, changes: Dict[str, Any]) -> Optional
     c=await client(); patch={k:changes[k] for k in ("status","severity","summary","title") if changes.get(k) is not None}
     if not patch: return await get_incident(incident_id)
     res=await c.table("incidents").update(patch).eq("id",incident_id).select("*,zones(zone_id,name,state,district)").maybe_single().execute()
-    return _incident(dict(res.data)) if res.data else None
+    return _incident(dict(_d(res))) if _d(res) else None
 
 # ---- Per-village impact / needs assessment --------------------------------
 async def create_impact(payload: Dict[str, Any]) -> Dict[str, Any]:
@@ -340,7 +352,7 @@ async def update_impact(impact_id: str, changes: Dict[str, Any]) -> Optional[Dic
     c=await client(); patch={k:changes[k] for k in ("affected_population","households","casualties","injured","status","needs","notes") if changes.get(k) is not None}
     if not patch: return None
     res=await c.table("incident_impacts").update(patch).eq("id",impact_id).select("*").maybe_single().execute()
-    return dict(res.data) if res.data else None
+    return dict(_d(res)) if _d(res) else None
 
 # ---- Relief resources ------------------------------------------------------
 async def create_resource(payload: Dict[str, Any]) -> Dict[str, Any]:
@@ -366,7 +378,7 @@ async def update_resource(resource_id: str, changes: Dict[str, Any]) -> Optional
     c=await client(); patch={k:changes[k] for k in ("status","quantity","unit","label","notes") if changes.get(k) is not None}
     if not patch: return None
     res=await c.table("relief_resources").update(patch).eq("id",resource_id).select("*").maybe_single().execute()
-    return dict(res.data) if res.data else None
+    return dict(_d(res)) if _d(res) else None
 
 # ---- Live operations feed (Feature B) -------------------------------------
 async def _blocked_roads() -> List[Dict[str, Any]]:
@@ -488,8 +500,8 @@ async def recovery_overview(limit: int = 100) -> List[Dict[str, Any]]:
 
 async def get_recovery_plan(incident_id: str) -> Optional[Dict[str, Any]]:
     c=await client(); res=await c.table("recovery_plans").select("*").eq("incident_id",incident_id).maybe_single().execute()
-    if not res.data: return None
-    plan=dict(res.data); plan["steps"]=await list_recovery_steps(plan["id"]); plan["progress"]=_recovery_progress(plan["steps"])
+    if not _d(res): return None
+    plan=dict(_d(res)); plan["steps"]=await list_recovery_steps(plan["id"]); plan["progress"]=_recovery_progress(plan["steps"])
     return plan
 
 async def generate_recovery_plan(incident_id: str, severity: Optional[str], created_by: Optional[str], regenerate: bool = False) -> Dict[str, Any]:
@@ -505,8 +517,8 @@ async def generate_recovery_plan(incident_id: str, severity: Optional[str], crea
     field progress."""
     c=await client()
     existing=await c.table("recovery_plans").select("*").eq("incident_id",incident_id).maybe_single().execute()
-    if existing.data:
-        plan_row=dict(existing.data)
+    if _d(existing):
+        plan_row=dict(_d(existing))
     else:
         plan_row=dict((await c.table("recovery_plans").insert({"incident_id":incident_id,"framework":playbook.FRAMEWORK,"status":"ACTIVE","created_by":created_by}).select("*").single().execute()).data)
     have={s["code"] for s in await list_recovery_steps(plan_row["id"])}
@@ -538,4 +550,4 @@ async def update_recovery_step(step_id: str, changes: Dict[str, Any]) -> Optiona
     if patch.get("status")=="DONE": patch["done_at"]=datetime.now(timezone.utc).isoformat()
     elif "status" in patch: patch["done_at"]=None
     res=await c.table("recovery_steps").update(patch).eq("id",step_id).select("*").maybe_single().execute()
-    return dict(res.data) if res.data else None
+    return dict(_d(res)) if _d(res) else None

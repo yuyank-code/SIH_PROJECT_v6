@@ -90,9 +90,12 @@ async def get_zone(zone_id: str) -> Optional[Dict[str, Any]]:
         .maybe_single()
         .execute()
     )
-    if not response.data:
+    # maybe_single() returns None outright (not a response object with
+    # .data=None) when zero rows match.
+    data = getattr(response, "data", None)
+    if not data:
         return None
-    return _zone_from_row(response.data)
+    return _zone_from_row(data)
 
 
 async def count_zones() -> int:

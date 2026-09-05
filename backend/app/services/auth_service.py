@@ -29,7 +29,12 @@ async def admin_client() -> AsyncClient:
 async def get_profile(user_id: str) -> Optional[Dict[str, Any]]:
     c = await admin_client()
     result = await c.table("profiles").select("*").eq("id", user_id).maybe_single().execute()
-    return dict(result.data) if result.data else None
+    # maybe_single() returns None outright (not a response object with
+    # .data=None) when zero rows match -- accessing .data directly on that
+    # crashes every authenticated request for a user whose profile row isn't
+    # there yet (e.g. a signup racing the DB trigger that creates it).
+    data = getattr(result, "data", None)
+    return dict(data) if data else None
 
 
 async def ensure_profile(user_id: str, full_name: Optional[str] = None, phone: Optional[str] = None) -> Dict[str, Any]:
