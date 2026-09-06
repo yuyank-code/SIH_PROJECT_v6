@@ -42,5 +42,6 @@ async def ensure_profile(user_id: str, full_name: Optional[str] = None, phone: O
     existing = await get_profile(user_id)
     if existing:
         return existing
-    result = await c.table("profiles").insert({"id": user_id, "full_name": full_name, "phone": phone, "role": "CITIZEN", "is_active": True}).select("*").single().execute()
-    return dict(result.data)
+    result = await c.table("profiles").insert({"id": user_id, "full_name": full_name, "phone": phone, "role": "CITIZEN", "is_active": True}).execute()
+    row = (getattr(result, "data", None) or [{}])[0]
+    return dict(row)

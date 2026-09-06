@@ -15,8 +15,9 @@ async def add_media(report_id: str, storage_path: str, media_type: str, mime_typ
         "mime_type": mime_type,
         "size_bytes": size_bytes,
     }
-    result = await client.table("report_media").insert(row).select("*").single().execute()
-    return dict(result.data)
+    result = await client.table("report_media").insert(row).execute()
+    new_row = (getattr(result, "data", None) or [{}])[0]
+    return dict(new_row)
 
 
 async def list_media(report_id: str) -> list[Dict[str, Any]]:
